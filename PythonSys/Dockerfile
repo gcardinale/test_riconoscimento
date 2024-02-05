@@ -31,9 +31,9 @@ WORKDIR /app
 RUN pip install --upgrade pip
 RUN pip install faster-whisper
 
+
 # Install Gradio and Gradio Client
 RUN pip install aioredis celery[redis] Redis fastapi[all]
-
 RUN pip install pydantic-settings
 
 # Copy source code to app directory

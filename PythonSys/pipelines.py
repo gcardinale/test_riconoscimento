@@ -1,16 +1,16 @@
 import logging
 from faster_whisper import WhisperModel
 from io import BytesIO
-#from config import settings
+from config import settings
 
 logging.basicConfig(level=logging.INFO)
 
-# MODEL_PATH = settings.model_path
+MODEL_PATH = settings.model_path
 
 class WhisperPipeline:
     def __init__(self) -> None:
         # Run on GPU with FP16
-        self.model = WhisperModel("medium", device="cpu", compute_type="int8")
+        self.model = WhisperModel(MODEL_PATH, device="cpu", compute_type="int8")
         
         # self.warmup()
         
