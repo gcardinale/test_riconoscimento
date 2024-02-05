@@ -11,7 +11,7 @@ class WhisperPipeline:
     def __init__(self) -> None:
         # Run on GPU with FP16
         #self.model = WhisperModel("medium", device="cpu", compute_type="int8")
-        self.model = WhisperModel("models/whisper-model-small", device="cpu", compute_type="int8", local_files_only=True)
+        self.model = WhisperModel("models/whisper-model-small", device="cuda", compute_type="int8", local_files_only=True)
         
         # self.warmup()
         

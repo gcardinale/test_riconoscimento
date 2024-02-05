@@ -50,6 +50,30 @@ async def transcribe_audio(
     text = whisper_pipeline.predict_instant(file_content)
 
     result = text.replace("Weavods", "Wevoz")
+    result = result.replace("Iwots", "Wevoz")
+    result = result.replace("WeWords", "Wevoz")
+    result = result.replace("WeWats", "Wevoz")
+    result = result.replace("wewots", "Wevoz")
+    result = result.replace("WeWots", "Wevoz")
+    result = result.replace("wewods", "Wevoz")
+    result = result.replace("WeWods", "Wevoz")
+    result = result.replace("we-wods", "Wevoz")
+    result = result.replace("Weevoz", "Wevoz")
+    result = result.replace("Weavots", "Wevoz")
+    result = result.replace("Ui Uozo", "Wevoz")
+    result = result.replace("WiiWatts", "Wevoz")
+    result = result.replace("WeWATCH", "Wevoz")
+    result = result.replace("WIWOTS", "Wevoz")
+    result = result.replace("WeWATSU", "Wevoz")
+    result = result.replace("We Vots", "Wevoz")
+    result = result.replace("Vivoz", "Wevoz")
+    result = result.replace("Weevoots", "Wevoz")
+    result = result.replace("WeWATHS", "Wevoz")
+    result = result.replace("IWATS", "Wevoz")
+    result = result.replace("wevods", "Wevoz")
+    result = result.replace("Simana", "Simona")
+    result = result.replace("Mahler None", "Manlio Arnone")
+
     return {"transcription": result}
 
 if __name__ == "__main__":

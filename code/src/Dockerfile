@@ -5,7 +5,7 @@ FROM python:3.8
 WORKDIR /app
 
 # Copia i file del tuo progetto nel container
-COPY . .
+COPY .. .
 
 # Installa le dipendenze
 RUN pip install --no-cache-dir uvicorn fastapi python-multipart faster-whisper
