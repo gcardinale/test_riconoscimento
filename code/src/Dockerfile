@@ -1,5 +1,8 @@
 # Usa un'immagine di base di Python
 FROM python:3.8
+# Usa un'immagine di base di TensorFlow con supporto GPU per Google Cloud
+#FROM gcr.io/deeplearning-platform-release/base-cu110
+
 
 # Imposta il lavoro di lavoro all'interno del container
 WORKDIR /app
