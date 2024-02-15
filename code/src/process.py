@@ -1,15 +1,22 @@
-
+import os
 import uuid
+from typing import Optional
+
 from fastapi import FastAPI, Header, HTTPException, Depends, BackgroundTasks
 from celery import Celery
-from redis import Redis
+import redis
 from fastapi.responses import JSONResponse
 import requests
 
 MAX_FILE_SIZE_FOR_SYNC_PROCESSING = 10485760  # 10 MB
 
-celery = Celery("tasks", broker="redis://10.168.223.204:6379/0")
-redis_client = Redis(host='10.168.223.204', port=6379, db=0)
+# Leggi l'host e la porta del broker Redis dalle variabili d'ambiente
+redis_host = os.environ.get('REDIS_HOST', 'localhost')
+redis_port = int(os.environ.get('REDIS_PORT', 6379))
+redis_expire = int(os.environ.get('REDIS_EXPIRE', 86400))
+
+celery = Celery("tasks", broker="redis://{redis_host}:{redis_port}/0")
+redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
 
 
 def get_pipeline():
@@ -17,29 +24,27 @@ def get_pipeline():
     return pipe
 
 
-async def transcribe(file, background_tasks: BackgroundTasks):
-    file_data = await get_file(file)
-    if file_data is None:
-        return JSONResponse(content={"error": "Failed to download the audio file"}, status_code=400)
-    else:
-        task_id = str(uuid.uuid4())
-        if file.size < MAX_FILE_SIZE_FOR_SYNC_PROCESSING:
-            result = process_audio_file(task_id, file_data)
-        else:
-            result = ""
-            background_tasks.add_task(process_audio_file, task_id, file_data)
-
-        return {"task_id": task_id, "transcription": result}
+def transcribe(file, background_tasks: BackgroundTasks):
+    task_id = str(uuid.uuid4())
+    result = ""
+    background_tasks.add_task(process_audio_file, task_id, file)
+    return {"task_id": task_id, "transcription": result}
 
 
-async def get_transcription(task_id):
+def immediate_transcribe(file):
+    task_id = str(uuid.uuid4())
+    result = process_audio_file(task_id, file)
+    return {"task_id": task_id, "transcription": result}
+
+
+def get_transcription(task_id):
     transcription = redis_client.get(task_id)
     if transcription is None:
         return JSONResponse(content={"error": "Task not found"}, status_code=404)
     return {"task_id": task_id, "transcription": transcription.decode("utf-8")}
 
 
-async def get_file(file):
+def get_file(file):
     try:
         response = requests.get(file.file_link)
         response.raise_for_status()
@@ -50,12 +55,16 @@ async def get_file(file):
 
 
 @celery.task
-async def process_audio_file(task_id, file_content):
-    whisper_pipeline = get_pipeline()
-    text = whisper_pipeline.predict_instant(file_content)
-    result = process_transcription(text)
-    redis_client.set(task_id, result)
-    return result
+def process_audio_file(task_id, file):
+    file_data = get_file(file)
+    if file_data is None:
+        redis_client.set(task_id, "Error: file not found")
+    else:
+        whisper_pipeline = get_pipeline()
+        text = whisper_pipeline.predict_instant(file_data)
+        result = process_transcription(text)
+        redis_client.setex(task_id, redis_expire, result)
+        return result
 
 
 def process_transcription(text):
@@ -82,7 +91,16 @@ def process_transcription(text):
     result = result.replace("WeWATHS", "Wevoz")
     result = result.replace("IWATS", "Wevoz")
     result = result.replace("wevods", "Wevoz")
+    result = result.replace("we watch", "Wevoz")
+    result = result.replace("wewoods", "Wevoz")
+    result = result.replace("WIWOTZ", "Wevoz")
+    result = result.replace("WeWATS", "Wevoz")
+    result = result.replace("we-vots", "Wevoz")
+    result = result.replace("we wots", "Wevoz")
+    result = result.replace("Weevoads", "Wevoz")
+    result = result.replace("weavods", "Wevoz")
     result = result.replace("Simana", "Simona")
+    result = result.replace("Malle", "Manlio")
     result = result.replace("Mahler None", "Manlio Arnone")
 
     return result
