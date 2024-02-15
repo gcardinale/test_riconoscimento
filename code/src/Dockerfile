@@ -11,7 +11,7 @@ WORKDIR /app
 COPY .. .
 
 # Installa le dipendenze
-RUN pip install --no-cache-dir uvicorn fastapi python-multipart faster-whisper
+RUN pip install --no-cache-dir uvicorn fastapi python-multipart faster-whisper aiohttp
 RUN pip install --upgrade faster-whisper
 
 # Espone la porta su cui il server FastAPI sarà in ascolto
