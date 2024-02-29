@@ -1,5 +1,6 @@
 import os
 import uuid
+import json
 from typing import Optional
 
 from fastapi import FastAPI, Header, HTTPException, Depends, BackgroundTasks
@@ -25,23 +26,71 @@ def get_pipeline():
 
 
 def transcribe(file, background_tasks: BackgroundTasks):
-    task_id = str(uuid.uuid4())
-    result = ""
-    background_tasks.add_task(process_audio_file, task_id, file)
-    return {"task_id": task_id, "transcription": result}
+    try:
+        task_id = str(uuid.uuid4())
+        result = ""
+        background_tasks.add_task(process_audio_file, task_id, file)
+        redis_client.setex(task_id, redis_expire,
+                           json.dumps(dict(status="Processing", status_code=0, transcription="", error="")))
+        return JSONResponse(
+            status_code=200, content={"task_id": task_id,
+                                      "status": "Processing",
+                                      "status_code": 0,
+                                      "transcription": result,
+                                      "error": ""})
+    except Exception as e:
+        return JSONResponse(
+            status_code=500, content={"task_id": "",
+                                      "status": "Error",
+                                      "status_code": 9,
+                                      "transcription": "",
+                                      "error": "Invalid: " + str(e)})
 
 
 def immediate_transcribe(file):
     task_id = str(uuid.uuid4())
-    result = process_audio_file(task_id, file)
-    return {"task_id": task_id, "transcription": result}
+    try:
+        result = process_audio_file(task_id, file)
+        return JSONResponse(
+            status_code=200, content={"task_id": task_id,
+                                      "status": "Complete",
+                                      "status_code": 1,
+                                      "transcription": result,
+                                      "error": ""})
+    except Exception as e:
+        return JSONResponse(
+            status_code=500, content={"task_id": task_id,
+                                      "status": "Error",
+                                      "status_code": 9,
+                                      "transcription": "",
+                                      "error": "Invalid: " + str(e)})
 
 
 def get_transcription(task_id):
     transcription = redis_client.get(task_id)
+    transcription_data = json.loads(transcription.decode('utf-8'))
     if transcription is None:
-        return JSONResponse(content={"error": "Task not found"}, status_code=404)
-    return {"task_id": task_id, "transcription": transcription.decode("utf-8")}
+        return JSONResponse(
+            status_code=404, content={"task_id": task_id,
+                                      "status": transcription_data['status'],
+                                      "status_code": transcription_data['status_code'],
+                                      "transcription": transcription_data['transcription'],
+                                      "error": transcription_data['error']})
+    else:
+        if transcription_data['status_code'] == 9:
+            return JSONResponse(
+                status_code=400, content={"task_id": task_id,
+                                          "status": transcription_data['status'],
+                                          "status_code": transcription_data['status_code'],
+                                          "transcription": transcription_data['transcription'],
+                                          "error": transcription_data['error']})
+        else:
+            return JSONResponse(
+                status_code=200, content={"task_id": task_id,
+                                          "status": transcription_data['status'],
+                                          "status_code": transcription_data['status_code'],
+                                          "transcription": transcription_data['transcription'],
+                                          "error": transcription_data['error']})
 
 
 def get_file(file):
@@ -56,15 +105,23 @@ def get_file(file):
 
 @celery.task
 def process_audio_file(task_id, file):
-    file_data = get_file(file)
-    if file_data is None:
-        redis_client.set(task_id, "Error: file not found")
-    else:
-        whisper_pipeline = get_pipeline()
-        text = whisper_pipeline.predict_instant(file_data)
-        result = process_transcription(text)
-        redis_client.setex(task_id, redis_expire, result)
-        return result
+    try:
+        file_data = get_file(file)
+        if file_data is None:
+            redis_client.setex(task_id,
+                               redis_expire,
+                               json.dumps(
+                                   dict(status="Error", status_code=9, transcription="", error="File not found")))
+        else:
+            whisper_pipeline = get_pipeline()
+            text = whisper_pipeline.predict_instant(file_data)
+            result = process_transcription(text)
+            redis_client.setex(task_id, redis_expire,
+                               json.dumps(dict(status="Complete", status_code=1, transcription=result, error="")))
+            return result
+    except Exception as e:
+        redis_client.setex(task_id, redis_expire,
+                           json.dumps(dict(status="Error", status_code=9, transcription="", error=str(e))))
 
 
 def process_transcription(text):
