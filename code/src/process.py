@@ -65,18 +65,39 @@ def immediate_transcribe(file):
                                       "transcription": "",
                                       "error": "Invalid: " + str(e)})
 
-
-def get_transcription(task_id):
+def check_transcription(task_id):
     transcription = redis_client.get(task_id)
-    transcription_data = json.loads(transcription.decode('utf-8'))
     if transcription is None:
         return JSONResponse(
             status_code=404, content={"task_id": task_id,
-                                      "status": transcription_data['status'],
-                                      "status_code": transcription_data['status_code'],
-                                      "transcription": transcription_data['transcription'],
-                                      "error": transcription_data['error']})
+                                      "status": "Not Found",
+                                      "status_code": 9,
+                                      "error": "Task Not Found"})
     else:
+        transcription_data = json.loads(transcription.decode('utf-8'))
+        if transcription_data['status_code'] == 9:
+            return JSONResponse(
+                status_code=400, content={"task_id": task_id,
+                                          "status": transcription_data['status'],
+                                          "status_code": transcription_data['status_code'],
+                                          "error": transcription_data['error']})
+        else:
+            return JSONResponse(
+                status_code=200, content={"task_id": task_id,
+                                          "status": transcription_data['status'],
+                                          "status_code": transcription_data['status_code'],
+                                          "error": transcription_data['error']})
+
+def get_transcription(task_id):
+    transcription = redis_client.get(task_id)
+    if transcription is None:
+        return JSONResponse(
+            status_code=404, content={"task_id": task_id,
+                                      "status": "Not Found",
+                                      "status_code": 9,
+                                      "error": "Task Not Found"})
+    else:
+        transcription_data = json.loads(transcription.decode('utf-8'))
         if transcription_data['status_code'] == 9:
             return JSONResponse(
                 status_code=400, content={"task_id": task_id,

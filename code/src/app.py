@@ -60,6 +60,9 @@ def immediate_transcribe_audio(
 def get_transcription(task_id: str, is_token_valid: bool = Depends(verify_token)):
     return process.get_transcription(task_id)
 
+@app.get("/check/{task_id}")
+def get_transcription(task_id: str, is_token_valid: bool = Depends(verify_token)):
+    return process.check_transcription(task_id)
 
 if __name__ == "__main__":
     import uvicorn
